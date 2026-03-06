@@ -41,8 +41,8 @@ from preprocessing.feature_pipe import (
     WarmupDropper,
 )
 
-ARTIFACTS_DIR = Path("data/artifacts")
-PROCESSED_DIR = Path("data/processed")
+ARTIFACTS_DIR = Path("/tmp/artifacts")
+PROCESSED_DIR = Path("/tmp/processed")
 RAW_CSV       = Path("data/raw/OANDA_EURUSD_15.csv")
 
 def build_Xy(

@@ -51,7 +51,9 @@ from src.pipeline import run
 from src.train import argparse, train
 
 BASE_DIR       = Path(__file__).parent
-ARTIFACTS_DIR  = BASE_DIR / "data" / "artifacts"
+TMP_DIR        = Path("/tmp")
+ARTIFACTS_DIR  = TMP_DIR / "artifacts"
+PROCESSED_DIR  = TMP_DIR / "processed"
 RAW_CSV        = BASE_DIR / "data" / "raw" / "OANDA_EURUSD_15.csv"
 
 MASTER_PIPE_PATH  = ARTIFACTS_DIR / "master_pipe.pkl"
@@ -71,6 +73,9 @@ class _Registry:
 
 registry = _Registry()
 
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -81,9 +86,9 @@ async def lifespan(app: FastAPI):
         print(f"[startup] Attempting to run training to generate missing artifacts...")
         try:
             run(
-                csv_path      = Path("data/raw/OANDA_EURUSD_15.csv"),
-                artifacts_dir = Path("data/artifacts"),
-                processed_dir = Path("data/processed"),
+                csv_path      = RAW_CSV,
+                artifacts_dir = ARTIFACTS_DIR,
+                processed_dir = PROCESSED_DIR,
                 train_ratio   = 0.70,
                 val_ratio     = 0.10,
                 freq          = "15min",
@@ -323,7 +328,7 @@ def refresh_artifacts():
         processed_deleted = []
 
         artifacts_dir = ARTIFACTS_DIR
-        processed_dir = BASE_DIR / "data" / "processed"
+        processed_dir = PROCESSED_DIR
 
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         processed_dir.mkdir(parents=True, exist_ok=True)
@@ -348,9 +353,9 @@ def refresh_artifacts():
         registry.load_ts = 0.0
 
         run(
-            csv_path=Path("data/raw/OANDA_EURUSD_15.csv"),
-            artifacts_dir=Path("data/artifacts"),
-            processed_dir=Path("data/processed"),
+            csv_path=RAW_CSV,
+            artifacts_dir=ARTIFACTS_DIR,
+            processed_dir=PROCESSED_DIR,
             train_ratio=0.70,
             val_ratio=0.10,
             freq="15min",

@@ -90,8 +90,8 @@ def load_pipeline(path: str | Path) -> Pipeline:
 def run(
     csv_path: str | Path,
     *,
-    artifacts_dir: str | Path = "data/artifacts",
-    processed_dir: str | Path = "data/processed",
+    artifacts_dir: str | Path = "/tmp/artifacts",
+    processed_dir: str | Path = "/tmp/processed",
     train_ratio: float = 0.70,
     val_ratio: float   = 0.10,
     **pipeline_kwargs,
@@ -131,8 +131,8 @@ def run(
 if __name__ == "__main__":
     result = run(
         csv_path      = Path("data/raw/OANDA_EURUSD_15.csv"),
-        artifacts_dir = Path("data/artifacts"),
-        processed_dir = Path("data/processed"),
+        artifacts_dir = Path("/tmp/artifacts"),
+        processed_dir = Path("/tmp/processed"),
         train_ratio   = 0.70,
         val_ratio     = 0.10,
         freq          = "15min",
