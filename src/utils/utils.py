@@ -144,62 +144,87 @@ def _fetch_yfinance(
     interval :str,
     period :str
 ) -> pd.DataFrame:
-    try:
-        raw = yf.download(
-            tickers      = ticker,
-            interval     = interval,
-            period       = period,
-            auto_adjust  = True,
-            progress     = False,
-            multi_level_index= False,
+    interval_norm = (interval or "").strip().lower()
+    period_candidates = [period]
+
+    if interval_norm == "1m":
+        period_candidates += ["7d"]
+    elif interval_norm in {"2m", "5m", "15m", "30m", "60m", "90m", "1h"}:
+        period_candidates += ["1mo", "2mo"]
+    else:
+        period_candidates += ["1mo", "3mo"]
+
+    tried_periods: list[str] = []
+    insufficient_rows: list[str] = []
+    last_download_error: str | None = None
+
+    for candidate_period in period_candidates:
+        if candidate_period in tried_periods:
+            continue
+        tried_periods.append(candidate_period)
+
+        raw = None
+        for attempt in range(2):
+            try:
+                raw = yf.download(
+                    tickers      = ticker,
+                    interval     = interval,
+                    period       = candidate_period,
+                    auto_adjust  = True,
+                    progress     = False,
+                    multi_level_index= False,
+                )
+            except Exception as exc:
+                last_download_error = str(exc)
+                raw = None
+
+            if raw is not None and not raw.empty:
+                break
+            if attempt == 0:
+                time.sleep(0.8)
+
+        if raw is None or raw.empty:
+            continue
+
+        if isinstance(raw.columns, pd.MultiIndex):
+            raw.columns = raw.columns.get_level_values(0)
+
+        df = raw.reset_index()
+        idx_col = next(
+            (c for c in df.columns if c.lower() in ("datetime", "date")),
+            df.columns[0],
         )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"yfinance download failed for '{ticker}': {exc}",
-        )
+        df = df.rename(columns={
+            idx_col:  "time",
+            "Open":   "open",
+            "High":   "high",
+            "Low":    "low",
+            "Close":  "close",
+        })
 
-    if raw is None or raw.empty:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"yfinance returned no data for ticker='{ticker}' "
-                f"interval='{interval}' period='{period}'. "
-                "Markets may be closed or the ticker is invalid."
-            ),
-        )
+        if "Volume" not in df.columns:
+            df["Volume"] = 0.0
+        df["Volume"] = df["Volume"].fillna(0.0)
 
-    if isinstance(raw.columns, pd.MultiIndex):
-        raw.columns = raw.columns.get_level_values(0)
+        df = df.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
 
-    df = raw.reset_index()
+        if len(df) >= MIN_CONTEXT_ROWS:
+            return df
 
-    idx_col = next(
-        (c for c in df.columns if c.lower() in ("datetime", "date")),
-        df.columns[0],
+        insufficient_rows.append(f"{candidate_period}:{len(df)}")
+
+    detail = (
+        f"yfinance returned no usable data for ticker='{ticker}' interval='{interval}'. "
+        f"Tried periods: {', '.join(tried_periods)}."
     )
-    df = df.rename(columns={
-        idx_col:  "time",
-        "Open":   "open",
-        "High":   "high",
-        "Low":    "low",
-        "Close":  "close",
-    })
-
-    if "Volume" not in df.columns:
-        df["Volume"] = 0.0
-    df["Volume"] = df["Volume"].fillna(0.0)
-
-    df = df.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
-
-    if len(df) < MIN_CONTEXT_ROWS:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"yfinance only returned {len(df)} clean bars for "
-                f"ticker='{ticker}' period='{period}'. "
-                f"Need at least {MIN_CONTEXT_ROWS}. Try a longer period."
-            ),
+    if insufficient_rows:
+        detail += (
+            f" Returned too few rows for context (need {MIN_CONTEXT_ROWS}): "
+            f"{'; '.join(insufficient_rows)}."
         )
+    else:
+        detail += " No rows returned."
+    if last_download_error:
+        detail += f" Last yfinance error: {last_download_error}"
 
-    return df
+    raise HTTPException(status_code=503, detail=detail)
