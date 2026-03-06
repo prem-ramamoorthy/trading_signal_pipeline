@@ -1,0 +1,30 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  EUR/USD Candle Colour Predictor — Python dependencies
+#  Python >= 3.10
+#
+#  Install:
+#    pip install -r requirements.txt
+#
+#  Upgrade all:
+#    pip install -r requirements.txt --upgrade
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+numpy==2.4.2
+pandas==3.0.1
+scipy==1.17.0
+yfinance==0.2.54
+
+# ── Machine Learning ──────────────────────────────────────────────────────────
+scikit-learn==1.8.0
+joblib==1.5.3
+
+# ── API ───────────────────────────────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn==0.32.1
+python-multipart==0.0.20        # required for FastAPI file uploads
+pydantic==2.10.4
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.4
+httpx==0.28.1                   # FastAPI TestClient dependency
