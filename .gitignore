@@ -123,12 +123,9 @@ dmypy.json
 .pyre/
 
 # ML Pipeline specific
-models/
-data/
 *.pkl
 *.joblib
 *.h5
-*.csv
 .DS_Store
 .vscode/
 .idea/
